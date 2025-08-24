@@ -1,0 +1,15 @@
+{
+  "name": "sam-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node src/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "venom-bot": "^5.3.0"
+  },
+  "description": "Session archive manager is a whatsapp bot to manager directores based in sessions"
+}
