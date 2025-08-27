@@ -1,5 +1,3 @@
-</center>![Icon](https://github.com/MoonDusk1996/sam-bot/blob/main/public/sam-icon.png)
-
 <p align="center">
   <img src="https://github.com/MoonDusk1996/sam-bot/blob/main/public/sam-icon.png" alt="icon" />
 </p>
