@@ -1,4 +1,4 @@
-![Logo](https://github.com/MoonDusk1996/sam-bot/blob/main/public/icon.png)
+![Logo](https://github.com/MoonDusk1996/sam-bot/blob/main/public/sam-icon.png)
 
 # Abstract
 
