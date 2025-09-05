@@ -1,4 +1,4 @@
-import type { Session } from "./sessionManager.js";
+import type { BaseSession } from "./sessionManager.js";
 import { execFile, exec } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
@@ -15,7 +15,7 @@ export async function compressImage(inputPath: string, outputPath: string) {
 
 // Salva mensagens em um arquivo de texto da sessão.
 export async function appendMessage(
-  session: Session,
+  session: BaseSession,
   message: string,
 ): Promise<void> {
   if (!session?.sessionPath) return;
@@ -31,7 +31,7 @@ export async function appendMessage(
 
 // Enfileira jobs assíncronos para execução sequencial dentro da sessão.
 export async function enqueueJob(
-  session: Session,
+  session: BaseSession,
   job: () => Promise<any>,
 ): Promise<any> {
   session.queue = session.queue ? session.queue.then(() => job()) : job();

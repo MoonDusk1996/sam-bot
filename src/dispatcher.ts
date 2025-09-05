@@ -1,4 +1,4 @@
-import { saveFileSession, setSession, type Session } from "./sessionManager.js";
+import { setSession, type BaseSession } from "./sessionManager.js";
 import { type Message } from "whatsapp-web.js";
 import { commandHandlers } from "./start.js";
 import { config } from "./config.js";
@@ -21,7 +21,10 @@ export async function messageCommand(message: Message) {
   }
 }
 
-export async function noMessageCommand(session: Session, message: Message) {
+export async function noMessageCommand(
+  session: BaseSession | null,
+  message: Message,
+) {
   if (
     session?.waitingForId &&
     message.from === session.from &&
@@ -41,7 +44,6 @@ export async function noMessageCommand(session: Session, message: Message) {
         images: existingImages,
         waitingForId: false,
       });
-      await saveFileSession(session);
       await message.reply(`Sessão para o diretório ${sessionId} ativa.`);
     } catch (err) {
       console.error(err);

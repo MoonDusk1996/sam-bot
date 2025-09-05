@@ -136,12 +136,8 @@ client.on("ready", () => {
 client.on("message", async (message: Message) => {
   const session = getSession();
   if (!config.ALLOWED_IDS.has(message.from.trim())) return;
-
-  //dispatchers de mensagens com ou sem comandos
   messageCommand(message);
-  if (session) {
-    noMessageCommand(session, message);
-  }
+  noMessageCommand(session, message);
 });
 
 client.initialize();
