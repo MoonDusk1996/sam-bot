@@ -1,0 +1,6 @@
+/node_modules
+/tokens
+/dist
+shell.nix
+.wwebjs_cache/
+.wwebjs_auth/
