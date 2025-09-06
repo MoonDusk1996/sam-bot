@@ -1,56 +1,24 @@
-import fs from "fs/promises";
-import path from "path";
-import { config } from "./config.js";
+// ---Tuddo isso aqui é experimentarimentação --- \\
+let session: BaseSession | ActiveSession | null = null; //start null
 
+export type PartManagment = "none" | "getParts" | "returnParts";
 export interface BaseSession {
-  sessionPath?: string;
-  queue?: Promise<any>;
   sessionId?: string;
-  images?: string[];
+  sessionPath?: string;
   from?: string;
+  images?: string[];
+  queue?: Promise<any>;
   waitingForId?: boolean;
+  partManagment?: PartManagment;
 }
-
-let session: BaseSession | null = null;
-
-export async function setSession(newSession: BaseSession) {
-  session = newSession;
-  await fs.writeFile(
-    config.LASTSESSIONFILE,
-    JSON.stringify(
-      {
-        sessionId: session.sessionId,
-        sessionPath: session.sessionPath,
-        from: session.from,
-      },
-      null,
-      2,
-    ),
-  );
+export interface ActiveSession extends BaseSession {
+  sessionId: string;
 }
-export function getSession(): BaseSession | null {
-  return session;
+export interface WaitingSession extends BaseSession {
+  waitingForId: true;
+  from: string;
 }
-
-export function clearSession() {
-  session = null;
-}
-
-export async function loadFileSession(): Promise<BaseSession | null> {
-  try {
-    const data = await fs.readFile(config.LASTSESSIONFILE, "utf-8");
-    const obj = JSON.parse(data);
-    const images = (await fs.readdir(obj.sessionPath))
-      .filter((f: string) => /\.(jpe?g|png)$/i.test(f) && f !== "mosaic.jpg")
-      .map((f: string) => path.join(obj.sessionPath, f));
-    return {
-      sessionId: obj.sessionId,
-      sessionPath: obj.sessionPath,
-      from: obj.from,
-      images,
-      waitingForId: false,
-    };
-  } catch {
-    return null;
-  }
-}
+export const getSession = (): BaseSession | null => session;
+export const clearSession = () => (session = null);
+export const setSession = async (newSession: BaseSession) =>
+  (session = newSession);

@@ -1,8 +1,11 @@
 import path from "path";
+import envPaths from "env-paths";
 
-const WORK_DIR = process.env.SAM_WORKDIR as string;
-const CHROMIUM_PATH = process.env.CHROMIUM_PATH as string;
-const LASTSESSIONFILE = path.join(WORK_DIR, "lastsession.json");
+const paths = envPaths("sam-bot");
+const INDEX_FILE = path.join(paths.config, "index.json");
+// envs configs
+const WORK_DIR = process.env.SAM_WORKDIR || paths.data;
+const CHROMIUM_PATH = process.env.CHROMIUM_PATH || "chromium";
 const ALLOWED_IDS = new Set(
   (process.env.SAM_ALLOWED_IDS || "")
     .split(",")
@@ -12,9 +15,7 @@ const ALLOWED_IDS = new Set(
 
 export const config = {
   WORK_DIR,
-  LASTSESSIONFILE,
   CHROMIUM_PATH,
   ALLOWED_IDS,
+  INDEX_FILE,
 };
-
-console.log("configs:", config);

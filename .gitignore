@@ -1,6 +1,7 @@
-/node_modules
-/tokens
-/dist
-shell.nix
+node_modules/
+tokens/
+dist/
 .wwebjs_cache/
 .wwebjs_auth/
+src/tests/
+shell.nix
