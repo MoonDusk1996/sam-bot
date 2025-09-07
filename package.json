@@ -2,8 +2,7 @@
   "name": "sam-bot",
   "version": "1.0.0",
   "scripts": {
-    "dev": "yarn tsc && node dist/start.js",
-    "test": "yarn tsc && node src/tests/index.js"
+    "dev": "yarn tsc && node dist/start.js"
   },
   "type": "module",
   "main": "src/start.js",

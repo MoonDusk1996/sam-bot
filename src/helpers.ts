@@ -1,6 +1,8 @@
+import { setSession, type Session } from "./sessionManager.js";
 import type { Message } from "whatsapp-web.js";
 import { config } from "./config.js";
 import mime from "mime-types";
+import ExcelJS from "exceljs";
 import fs from "fs/promises";
 import sharp from "sharp";
 import path from "path";
@@ -12,12 +14,63 @@ import {
   writeFileSync,
 } from "fs";
 
-import {
-  getSession,
-  setSession,
-  type BaseSession,
-  type WaitingSession,
-} from "./sessionManager.js";
+interface Item {
+  cod: string;
+  desc: string;
+  qtd: string;
+  obs: string;
+  lote: string;
+}
+
+export const isOrigin = (session: Session, message: Message): boolean => {
+  return message.from === session.from ? true : false;
+};
+
+export async function insertData(dados: Item[]): Promise<void> {
+  const partManagment = "Devolução";
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile("/home/dusk/Repo/sam-bot/template.xlsx");
+  const sheet = workbook.getWorksheet(1);
+  if (!sheet) throw new Error("Planilha não encontrada no template.xlsx");
+
+  console.log("ok");
+  const startLine = 6; // agora começa da linha 7
+
+  // Inserir dados fixos
+  sheet.getCell("A1").value = partManagment;
+  sheet.getCell("A2").value = "Washington Lopes";
+  sheet.getCell("A7").value =
+    `Data da ${partManagment.toLowerCase()}: 06/09/2025`;
+
+  const baseRow = sheet.getRow(startLine);
+
+  for (const [index, item] of dados.entries()) {
+    const targetRowNumber = startLine + 1 + index;
+    const newRow = sheet.insertRow(targetRowNumber, [
+      item.cod,
+      item.desc,
+      item.qtd,
+      item.obs,
+      item.lote,
+    ]);
+
+    baseRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      const newCell = newRow.getCell(colNumber);
+
+      if (cell.border) newCell.border = { ...cell.border };
+      if (cell.alignment)
+        newCell.alignment = { ...cell.alignment, wrapText: true };
+      // if (cell.font) newCell.font = { ...cell.font };
+      // if (cell.fill) newCell.fill = { ...cell.fill };
+    });
+
+    newRow.commit();
+  }
+
+  console.log("ok");
+  await workbook.xlsx.writeFile("saida.xlsx");
+  console.log("Planilha gerada com sucesso!");
+}
 
 // Comprime imagem individualmente
 export async function compressImage(
@@ -43,7 +96,7 @@ export async function compressImage(
 }
 // Salva mensagens em um arquivo de texto da sessão.
 export async function appendMessage(
-  session: BaseSession,
+  session: Session,
   message: string,
 ): Promise<void> {
   if (!session?.sessionPath) return;
@@ -59,7 +112,7 @@ export async function appendMessage(
 
 // Enfileira jobs assíncronos dentro da sessão.
 export async function enqueueJob(
-  session: BaseSession,
+  session: Session,
   job: () => Promise<void>,
 ): Promise<any> {
   session.queue = session.queue ? session.queue.then(() => job()) : job();
@@ -133,17 +186,6 @@ export async function generateMosaic(
   // Grava apenas uma vez, após atingir o limite de tamanho
   await fs.writeFile(outputPath, new Uint8Array(outputBuffer));
 }
-// Verifica se o usuário está tentando ativar uma nova sessão.
-export function shouldActivateSession(
-  message: Message,
-  session: BaseSession | null,
-) {
-  return (
-    session?.waitingForId &&
-    message.from === session.from &&
-    !message.body.startsWith("/")
-  );
-}
 
 // Cria/ativa uma sessão com base no texto enviado.
 export async function activateSession(message: Message) {
@@ -162,7 +204,7 @@ export async function activateSession(message: Message) {
       sessionId,
       sessionPath,
       images: existingImages,
-      waitingForId: false,
+      mode: null,
     });
 
     await message.reply(`✅ Sessão para o diretório *${sessionId}* ativada.`);
@@ -173,7 +215,7 @@ export async function activateSession(message: Message) {
 }
 
 // Salva mídia enviada em uma sessão.
-export async function saveMedia(message: Message, session: BaseSession) {
+export async function saveMedia(message: Message, session: Session) {
   try {
     const media = await message.downloadMedia();
     if (!media) throw new Error("Falha no download da mídia.");
@@ -216,10 +258,7 @@ export async function compressAndReplace(
 }
 
 // Anexa mensagem de texto a uma sessão ativa.
-export async function processTextMessage(
-  message: Message,
-  session: BaseSession,
-) {
+export async function processTextMessage(message: Message, session: Session) {
   try {
     await appendMessage(session, message.body);
   } catch (err) {
@@ -228,7 +267,7 @@ export async function processTextMessage(
 }
 
 // INFO: como muito provavelmente teremos poucas instancias do bot, foi decidido fazer sincrono
-export function loadIndexFile(): WaitingSession | BaseSession | null {
+export function loadIndexFile(): Session | null {
   try {
     // Verifica se o arquivo de sessão existe
     if (!existsSync(config.INDEX_FILE)) {
@@ -252,14 +291,14 @@ export function loadIndexFile(): WaitingSession | BaseSession | null {
       sessionPath: obj.sessionPath,
       from: obj.from,
       images,
-      waitingForId: false,
+      mode: null,
     };
   } catch {
     return null;
   }
 }
 
-export async function saveIndexFile(newSession: WaitingSession | BaseSession) {
+export async function saveIndexFile(newSession: Session) {
   // Garante que o diretório exista
   const dir = path.dirname(config.INDEX_FILE);
   mkdirSync(dir, { recursive: true });

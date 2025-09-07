@@ -3,5 +3,7 @@ tokens/
 dist/
 .wwebjs_cache/
 .wwebjs_auth/
-src/tests/
 shell.nix
+saida.xlsx
+template.xlsx
+tests/

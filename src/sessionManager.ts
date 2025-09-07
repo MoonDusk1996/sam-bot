@@ -1,24 +1,17 @@
 // ---Tuddo isso aqui é experimentarimentação --- \\
-let session: BaseSession | ActiveSession | null = null; //start null
+let session: Session | null = null; //start null
 
-export type PartManagment = "none" | "getParts" | "returnParts";
-export interface BaseSession {
+export type Mode = "waiting_session" | "dev" | "ret" | null;
+
+export interface Session {
   sessionId?: string;
   sessionPath?: string;
   from?: string;
   images?: string[];
   queue?: Promise<any>;
-  waitingForId?: boolean;
-  partManagment?: PartManagment;
+  mode?: Mode;
 }
-export interface ActiveSession extends BaseSession {
-  sessionId: string;
-}
-export interface WaitingSession extends BaseSession {
-  waitingForId: true;
-  from: string;
-}
-export const getSession = (): BaseSession | null => session;
+
+export const setSession = async (newSession: Session) => (session = newSession);
 export const clearSession = () => (session = null);
-export const setSession = async (newSession: BaseSession) =>
-  (session = newSession);
+export const getSession = (): Session | null => session;

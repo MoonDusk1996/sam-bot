@@ -1,8 +1,8 @@
-import { Commands, Messages } from "./dispatchers.js";
 import pkg, { type Message } from "whatsapp-web.js";
 import { getSession } from "./sessionManager.js";
 import { config } from "./config.js";
 import qrcode from "qrcode-terminal";
+import { dispatchers } from "./dispatchers.js";
 
 const { Client, LocalAuth } = pkg;
 const client = new Client({
@@ -25,8 +25,7 @@ client.on("ready", () => {
 client.on("message", async (message: Message) => {
   if (!config.ALLOWED_IDS.has(message.from.trim())) return; //filter authorized IDs
   const session = getSession(); // start null
-  Messages(message, session);
-  Commands(message);
+  dispatchers(session, message);
 });
 
 client.initialize();

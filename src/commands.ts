@@ -53,16 +53,19 @@ export const commandHandlers: Record<string, CommandHandler> = {
       }
     } else {
       // Fluxo sem argumento
-      setSession({ waitingForId: true, from: message.from });
+      setSession({ mode: "waiting_session", from: message.from });
       await message.reply("Digite a Nova sessão:");
     }
   },
-  "/ret": async (message) => {
-    await message.reply(`Modo de retirada ativo.`);
-  },
   "/dev": async (message) => {
+    setSession({ mode: "dev", from: message.from });
     await message.reply(`Modo de devolução ativo.`);
   },
+  "/ret": async (message) => {
+    setSession({ mode: "ret", from: message.from });
+    await message.reply(`Modo de retirada ativo.`);
+  },
+
   "/help": async (message) => {
     const session = getSession();
     if (!session?.sessionId) {
