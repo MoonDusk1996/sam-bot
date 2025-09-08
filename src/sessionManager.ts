@@ -1,7 +1,7 @@
 // ---Tuddo isso aqui é experimentarimentação --- \\
 let session: Session | null = null; //start null
 
-export type Mode = "waiting_session" | "dev" | "ret" | null;
+export type Mode = "aguardando sessão" | "devolução" | "retirada";
 
 export interface Session {
   sessionId?: string;
@@ -12,6 +12,8 @@ export interface Session {
   mode?: Mode;
 }
 
-export const setSession = async (newSession: Session) => (session = newSession);
+export const setSession = async (newSession: Session) => {
+  session = newSession;
+};
 export const clearSession = () => (session = null);
 export const getSession = (): Session | null => session;

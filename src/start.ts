@@ -13,19 +13,13 @@ const client = new Client({
   },
 });
 
-// --- Eventos do cliente --- \\
-client.on("qr", (qr: string) => {
-  qrcode.generate(qr, { small: true });
-});
-
-client.on("ready", () => {
-  console.log("Cliente pronto!");
-});
-
+client.on("qr", (qr: string) => qrcode.generate(qr, { small: true }));
+client.on("ready", () => console.log("Cliente pronto!"));
 client.on("message", async (message: Message) => {
   if (!config.ALLOWED_IDS.has(message.from.trim())) return; //filter authorized IDs
-  const session = getSession(); // start null
-  dispatchers(session, message);
+  let session = getSession(); // start null
+  dispatchers(session, message); // handles
+  console.log(session); // Debug
 });
 
 client.initialize();

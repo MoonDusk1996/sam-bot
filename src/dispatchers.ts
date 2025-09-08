@@ -1,81 +1,75 @@
+import { setSession, type Session } from "./sessionManager.js";
 import { commandHandlers } from "./commands.js";
 import { type Message } from "whatsapp-web.js";
+import { config } from "./config.js";
+import fs from "fs/promises";
+import path from "path";
 import {
-  activateSession,
-  enqueueJob,
+  checkOrigin,
+  handleMediaMessage,
   insertData,
-  isOrigin,
   processTextMessage,
-  saveMedia,
+  sanitizeFolderName,
 } from "./helpers.js";
-import type { Session } from "./sessionManager.js";
-interface Item {
-  cod: string;
-  desc: string;
-  qtd: string;
-  obs: string;
-  lote: string;
-}
-//WARNING: Fazer toda a logica de encaminhamento aqui e tirar o que for possivel de helpers
+
 export async function dispatchers(session: Session | null, message: Message) {
-  console.log(session, message); // Debug
+  const fromOrigin = checkOrigin(session, message);
 
-  // Verifica verifica em que modo o usuario e encontra e enchaminha
-  switch (session?.mode) {
-    case "waiting_session":
-      if (isOrigin(session, message)) await activateSession(message);
-      break;
-
-    case "dev":
-      if (isOrigin(session, message)) {
-        const dados: Item[] = [
-          {
-            cod: "000000000001508097",
-            desc: "POS MAST C4400 H3-4377 MON M2300, MOUSE",
-            qtd: "4",
-            obs: "usado 600007252222",
-            lote: "123651",
-          },
-          {
-            cod: "2asdjadahgdsj7351",
-            desc: "prasdalkjsdhakjdajsdhasaskoc",
-            qtd: "1",
-            obs: "novo",
-            lote: "12",
-          },
-          { cod: "27351", desc: "proc", qtd: "1", obs: "ok", lote: "12" },
-        ];
-
-        await insertData(dados);
-      }
-      break;
-
-    case "ret":
-      console.log("Você escolheu laranja 🍊");
-      break;
-  }
-
-  // Mídia
-  if (message.hasMedia) {
-    if (!session) {
-      await message.reply(
-        "⚠️ A mídia não foi armazenada pois não há sessão ativa.\n\nUse */new* para criar.",
-      );
-      return;
-    }
-    enqueueJob(session, () => saveMedia(message, session));
+  // --- Comandos explícitos iniciados por "/" ---\\
+  const [commandKey] = message.body.toLowerCase().split(" ");
+  const handler = commandHandlers[commandKey as keyof typeof commandHandlers];
+  if (handler) {
+    await handler(message, session);
     return;
   }
 
-  // Texto
-  if (session?.sessionId && message.from === session.from) {
-    await processTextMessage(message, session); //chat-log.txt
-  } else {
+  // --- Verifica o modo da sessão e age com base na resposta ---
+  switch (session?.mode) {
+    case "aguardando sessão":
+      if (!fromOrigin) break;
+      if (message.hasMedia) break;
+      const sessionId = sanitizeFolderName(message.body.trim()).toLowerCase();
+      const sessionPath = path.join(config.WORK_DIR, sessionId);
+
+      try {
+        await fs.mkdir(sessionPath, { recursive: true });
+
+        const existingImages = (await fs.readdir(sessionPath))
+          .filter((f) => f !== "mosaic.jpg" && /\.(jpe?g|png)$/i.test(f))
+          .map((f) => path.join(sessionPath, f));
+
+        setSession({
+          from: message.from,
+          sessionId,
+          sessionPath,
+          images: existingImages,
+        });
+
+        await message.reply(
+          `✅ Sessão para o diretório *${sessionId}* ativada.`,
+        );
+      } catch (err) {
+        console.error("Erro ao criar diretório:", err);
+        await message.reply("❌ Erro ao criar diretório.");
+      }
+      break;
+
+    case "devolução":
+      if (!fromOrigin) break;
+      if (message.hasMedia) break;
+      await insertData("devolução");
+      break;
+
+    case "retirada":
+      if (!fromOrigin) break;
+      if (message.hasMedia) break;
+      await insertData("retirada");
+      break;
   }
 
-  //---Comandos explícitos iniciadas por "/") ---\\
-  const [commandKey] = message.body.toLowerCase().split(" ");
-  const handler = commandHandlers[commandKey as keyof typeof commandHandlers];
-  if (!handler) return;
-  await handler(message);
+  // --- Outros textos em sessão para o chat-log.txt ---
+  if (session?.sessionId && fromOrigin) processTextMessage(message, session);
+
+  // --- Mídia ---
+  if (message.hasMedia) handleMediaMessage(message, session);
 }

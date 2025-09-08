@@ -1,4 +1,9 @@
-import { setSession, getSession, clearSession } from "./sessionManager.js";
+import {
+  setSession,
+  getSession,
+  clearSession,
+  type Session,
+} from "./sessionManager.js";
 import pkg, { type Message } from "whatsapp-web.js";
 import { config } from "./config.js";
 import fs from "fs/promises";
@@ -11,7 +16,10 @@ import {
   saveIndexFile,
 } from "./helpers.js";
 
-type CommandHandler = (message: Message) => Promise<void>;
+type CommandHandler = (
+  message: Message,
+  session: Session | null,
+) => Promise<void>;
 const { MessageMedia } = pkg;
 // --- Descrições de cada comando ---
 const commandDescriptions: Record<string, string> = {
@@ -52,28 +60,28 @@ export const commandHandlers: Record<string, CommandHandler> = {
         await message.reply("❌ Erro ao criar diretório.");
       }
     } else {
-      // Fluxo sem argumento
-      setSession({ mode: "waiting_session", from: message.from });
+      // Fluxo em argumento
+      setSession({ mode: "aguardando sessão", from: message.from });
       await message.reply("Digite a Nova sessão:");
     }
   },
+
   "/dev": async (message) => {
-    setSession({ mode: "dev", from: message.from });
+    setSession({ mode: "devolução", from: message.from }); // salva a nova sessão
     await message.reply(`Modo de devolução ativo.`);
   },
   "/ret": async (message) => {
-    setSession({ mode: "ret", from: message.from });
+    setSession({ mode: "retirada", from: message.from });
     await message.reply(`Modo de retirada ativo.`);
   },
 
-  "/help": async (message) => {
-    const session = getSession();
+  "/help": async (message, session) => {
     if (!session?.sessionId) {
-      await message.reply(`Nenhum diretório ativo.\n\n${commandList}`);
+      await message.reply(`Modo ${session?.mode} ativo.\n\nComandos:\n${commandList}`);
       return;
     }
     await message.reply(
-      `Diretório *${session.sessionId}* ativo.\n\n${commandList}`,
+      `Modo diretório *${session.sessionId}* ativo.\n\nComandos:\n${commandList}`,
     );
   },
 
@@ -87,8 +95,7 @@ export const commandHandlers: Record<string, CommandHandler> = {
     await message.reply(`ultimo diretório *${last.sessionId}* ativo.`);
   },
 
-  "/mosaic": async (message) => {
-    const session = getSession();
+  "/mosaic": async (message, session) => {
     if (!session) {
       await message.reply("⚠️ Nenhum diretório ativo. Use */new*");
       return;
@@ -119,6 +126,7 @@ export const commandHandlers: Record<string, CommandHandler> = {
   },
 
   "/ld": async (message) => {
+    // TODO: da pra fazer listar o quem tem no diretorio da sesão tambem aqui
     try {
       const items = await fs.readdir(config.WORK_DIR, { withFileTypes: true });
 
@@ -154,8 +162,7 @@ export const commandHandlers: Record<string, CommandHandler> = {
     }
   },
 
-  "/exit": async (message) => {
-    const session = getSession();
+  "/exit": async (message, session) => {
     if (!session?.sessionId) {
       clearSession();
       await message.reply("⚠️ Sem sessões carregadas.");

@@ -14,7 +14,7 @@ import {
   writeFileSync,
 } from "fs";
 
-interface Item {
+export interface Item {
   cod: string;
   desc: string;
   qtd: string;
@@ -22,25 +22,46 @@ interface Item {
   lote: string;
 }
 
-export const isOrigin = (session: Session, message: Message): boolean => {
-  return message.from === session.from ? true : false;
+export const checkOrigin = (
+  session: Session | null,
+  message: Message,
+): boolean => {
+  if (session) {
+    return message.from === session?.from ? true : false;
+  } else return false;
 };
 
-export async function insertData(dados: Item[]): Promise<void> {
-  const partManagment = "Devolução";
+export async function insertData(mode: string): Promise<void> {
+  const dados: Item[] = [
+    {
+      cod: "000000000001508097",
+      desc: "POS MAST C4400 H3-4377 MON M2300, MOUSE",
+      qtd: "4",
+      obs: "usado 600007252222",
+      lote: "123651",
+    },
+    {
+      cod: "2asdjadahgdsj7351",
+      desc: "prasdalkjsdhakjdajsdhasaskoc",
+      qtd: "1",
+      obs: "novo",
+      lote: "12",
+    },
+    { cod: "27351", desc: "proc", qtd: "1", obs: "ok", lote: "12" },
+  ];
+
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile("/home/dusk/Repo/sam-bot/template.xlsx");
   const sheet = workbook.getWorksheet(1);
   if (!sheet) throw new Error("Planilha não encontrada no template.xlsx");
 
-  console.log("ok");
   const startLine = 6; // agora começa da linha 7
 
   // Inserir dados fixos
-  sheet.getCell("A1").value = partManagment;
+  sheet.getCell("A1").value = mode.toUpperCase();
   sheet.getCell("A2").value = "Washington Lopes";
   sheet.getCell("A7").value =
-    `Data da ${partManagment.toLowerCase()}: 06/09/2025`;
+    `Data da ${mode.charAt(0).toUpperCase() + mode.slice(1)}: 06/09/2025`;
 
   const baseRow = sheet.getRow(startLine);
 
@@ -67,9 +88,8 @@ export async function insertData(dados: Item[]): Promise<void> {
     newRow.commit();
   }
 
-  console.log("ok");
   await workbook.xlsx.writeFile("saida.xlsx");
-  console.log("Planilha gerada com sucesso!");
+  console.log("Planilha gerada!");
 }
 
 // Comprime imagem individualmente
@@ -109,7 +129,20 @@ export async function appendMessage(
     console.error("Erro ao salvar mensagem:", err);
   }
 }
-
+export async function handleMediaMessage(
+  message: Message,
+  session: Session | null,
+) {
+  if (!session) {
+    await message.reply(
+      "⚠️ A mídia não foi armazenada pois não há sessão ativa.\n\nUse */new* para criar.",
+    );
+    return;
+  }
+  // Object.assign(session, { mode: undefined });
+  enqueueJob(session, () => saveMedia(message, session));
+  return;
+}
 // Enfileira jobs assíncronos dentro da sessão.
 export async function enqueueJob(
   session: Session,
@@ -128,6 +161,7 @@ export function sanitizeFolderName(name: string): string {
   return name.replace(/[^a-z0-9-_]/gi, "");
 }
 
+// Gera um mosaico com as imagesnda sessão
 export async function generateMosaic(
   images: string[],
   outputPath: string,
@@ -187,35 +221,13 @@ export async function generateMosaic(
   await fs.writeFile(outputPath, new Uint8Array(outputBuffer));
 }
 
-// Cria/ativa uma sessão com base no texto enviado.
-export async function activateSession(message: Message) {
-  const sessionId = sanitizeFolderName(message.body.trim()).toLowerCase();
-  const sessionPath = path.join(config.WORK_DIR, sessionId);
-
-  try {
-    await fs.mkdir(sessionPath, { recursive: true });
-
-    const existingImages = (await fs.readdir(sessionPath))
-      .filter((f) => f !== "mosaic.jpg" && /\.(jpeg|jpg|png)$/i.test(f))
-      .map((f) => path.join(sessionPath, f));
-
-    setSession({
-      from: message.from,
-      sessionId,
-      sessionPath,
-      images: existingImages,
-      mode: null,
-    });
-
-    await message.reply(`✅ Sessão para o diretório *${sessionId}* ativada.`);
-  } catch (err) {
-    console.error("Erro ao criar sessão:", err);
-    await message.reply("❌ Erro ao criar sessão.");
-  }
-}
-
 // Salva mídia enviada em uma sessão.
 export async function saveMedia(message: Message, session: Session) {
+  if (!session.sessionId) {
+    await message.reply(
+      `⚠️ A Mídia não foi gravada pois não há nenhum diretório ativo.`,
+    );
+  }
   try {
     const media = await message.downloadMedia();
     if (!media) throw new Error("Falha no download da mídia.");
@@ -237,9 +249,6 @@ export async function saveMedia(message: Message, session: Session) {
     await message.reply(`📄 Arquivo salvo em: ${filePath}`);
   } catch (err: any) {
     console.error("Erro ao salvar mídia:", err);
-    await message.reply(
-      `❌ Erro ao salvar ${message.type}: ${err.message || "desconhecido"}`,
-    );
   }
 }
 
@@ -291,7 +300,6 @@ export function loadIndexFile(): Session | null {
       sessionPath: obj.sessionPath,
       from: obj.from,
       images,
-      mode: null,
     };
   } catch {
     return null;
